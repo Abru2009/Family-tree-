@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { FamilyProvider } from './FamilyContext';
+import { AuthProvider, useAuth } from './AuthContext';
 import FamilyGraph from './components/FamilyGraph';
 import AddMemberModal from './components/AddMemberModal';
 import UpdateMemberModal from './components/UpdateMemberModal';
 import BirthdayNotifier from './components/BirthdayNotifier';
 import RelationshipModal from './components/RelationshipModal';
 import RemoveConnectionModal from './components/RemoveConnectionModal';
+import AuthModal from './components/AuthModal';
 
 const AppContent = () => {
+  const { isAuthModalOpen, closeAuthModal } = useAuth();
   const [modalOpenFor, setModalOpenFor] = useState(null);
   const [updateModalOpenFor, setUpdateModalOpenFor] = useState(null);
   const [removeConnectionFor, setRemoveConnectionFor] = useState(null);
@@ -43,6 +46,10 @@ const AppContent = () => {
         onOpenRelationshipModal={() => setShowRelationshipModal(true)}
         isRelationshipOpen={showRelationshipModal}
       />
+
+      {isAuthModalOpen && (
+        <AuthModal onClose={closeAuthModal} allowClose={true} />
+      )}
       
       {modalOpenFor && (
         <AddMemberModal 
@@ -74,9 +81,11 @@ const AppContent = () => {
 
 function App() {
   return (
-    <FamilyProvider>
-      <AppContent />
-    </FamilyProvider>
+    <AuthProvider>
+      <FamilyProvider>
+        <AppContent />
+      </FamilyProvider>
+    </AuthProvider>
   );
 }
 

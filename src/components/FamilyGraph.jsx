@@ -14,7 +14,8 @@ import dagre from 'dagre';
 import PersonNode from './PersonNode';
 import CoupleNode, { COUPLE_NODE_W, PERSON_NODE_W, NODE_H } from './CoupleNode';
 import { useFamily } from '../FamilyContext';
-import { Search } from 'lucide-react';
+import { useAuth } from '../AuthContext';
+import { Search, User, LogOut, Lock, Trash2 } from 'lucide-react';
 
 const nodeTypes = { person: PersonNode, couple: CoupleNode };
 
@@ -414,7 +415,8 @@ const GenerationRuler = ({ isRelationshipOpen }) => {
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 const FamilyGraph = ({ onAddRelative, onAddRoot, onUpdateMember, onRemoveConnections, onOpenRelationshipModal, isRelationshipOpen }) => {
-  const { data, deleteMember, addRelation } = useFamily();
+  const { data, deleteMember, addRelation, clearTree } = useFamily();
+  const { currentUser, openAuthModal, signOut } = useAuth();
   const [isLocked, setIsLocked] = React.useState(false); // Controls if screen panning/zooming is frozen
   const [showInfo, setShowInfo] = React.useState(true);   // Can dismiss info banner
 
@@ -574,6 +576,52 @@ const FamilyGraph = ({ onAddRelative, onAddRoot, onUpdateMember, onRemoveConnect
                 </button>
               </div>
 
+              {/* User Account Status Badge */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '6px 10px',
+                background: 'rgba(69, 183, 174, 0.08)',
+                border: '1px solid rgba(69, 183, 174, 0.25)',
+                borderRadius: 8,
+                fontSize: '0.76rem',
+              }}>
+                {currentUser ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', fontWeight: 600, overflow: 'hidden' }}>
+                      <User size={13} color="var(--accent-color)" />
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 130 }}>{currentUser.name}</span>
+                    </div>
+                    <button
+                      onClick={signOut}
+                      style={{
+                        background: 'none', border: 'none',
+                        color: '#f87171', cursor: 'pointer',
+                        fontSize: '0.72rem', fontWeight: 700,
+                        display: 'flex', alignItems: 'center', gap: 3,
+                      }}
+                      title="Sign out of your account"
+                    >
+                      <LogOut size={12} /> Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ color: 'var(--text-secondary)' }}>Guest Account</span>
+                    <button
+                      onClick={openAuthModal}
+                      style={{
+                        background: 'var(--accent-color)', border: 'none',
+                        borderRadius: 6, color: 'white',
+                        padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                      }}
+                    >
+                      <Lock size={11} /> Sign In
+                    </button>
+                  </>
+                )}
+              </div>
+
               {/* Buttons row */}
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
@@ -623,11 +671,28 @@ const FamilyGraph = ({ onAddRelative, onAddRoot, onUpdateMember, onRemoveConnect
 
               {/* Instructions section (collapsible) */}
               {showInfo && (
-                <div style={{ paddingTop: 6, borderTop: '1px solid rgba(69,183,174,0.15)' }}>
-                  <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                <div style={{ paddingTop: 6, borderTop: '1px solid rgba(69,183,174,0.15)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>
                     • Pan & zoom to explore.<br />
                     • Click ⋮ on a person to add or edit.
                   </p>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to clear all members to start building your big family tree?')) {
+                        clearTree();
+                      }
+                    }}
+                    style={{
+                      padding: '5px 8px', fontSize: '0.72rem', fontWeight: 600,
+                      borderRadius: 6, background: 'rgba(239, 68, 68, 0.1)',
+                      color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.25)',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                      marginTop: 2,
+                    }}
+                    title="Clear current tree to build a new one from scratch"
+                  >
+                    <Trash2 size={12} /> Clear Board (New Tree)
+                  </button>
                 </div>
               )}
             </div>

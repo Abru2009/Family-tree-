@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from './AuthContext';
 
 const FamilyContext = createContext();
 
@@ -11,9 +12,12 @@ const initialData = {
 };
 
 export const FamilyProvider = ({ children }) => {
+  const { currentUser } = useAuth();
+
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem('familyTreeData');
+      const key = currentUser ? `familyTreeData_usr_${currentUser.id}` : 'familyTreeData';
+      const saved = localStorage.getItem(key);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && Array.isArray(parsed.members) && Array.isArray(parsed.relations)) {
@@ -30,9 +34,40 @@ export const FamilyProvider = ({ children }) => {
     return initialData;
   });
 
+  // Re-load tree when active logged-in user changes
   useEffect(() => {
-    localStorage.setItem('familyTreeData', JSON.stringify(data));
-  }, [data]);
+    try {
+      const key = currentUser ? `familyTreeData_usr_${currentUser.id}` : 'familyTreeData';
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed.members) && Array.isArray(parsed.relations)) {
+          const validMemberIds = new Set(parsed.members.map(m => m.id));
+          const cleanRelations = parsed.relations.filter(
+            r => validMemberIds.has(r.source) && validMemberIds.has(r.target)
+          );
+          setData({ members: parsed.members, relations: cleanRelations });
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('Error switching user tree:', e);
+    }
+    setData(initialData);
+  }, [currentUser?.id]);
+
+  // Persist tree state
+  useEffect(() => {
+    const key = currentUser ? `familyTreeData_usr_${currentUser.id}` : 'familyTreeData';
+    localStorage.setItem(key, JSON.stringify(data));
+  }, [data, currentUser?.id]);
+
+  const clearTree = () => {
+    const emptyData = { members: [], relations: [] };
+    setData(emptyData);
+    const key = currentUser ? `familyTreeData_usr_${currentUser.id}` : 'familyTreeData';
+    localStorage.setItem(key, JSON.stringify(emptyData));
+  };
 
   const addMember = (member, relationType, relatedToId) => {
     const newMemberId = uuidv4();
@@ -143,7 +178,7 @@ export const FamilyProvider = ({ children }) => {
   };
 
   return (
-    <FamilyContext.Provider value={{ data, addMember, addParents, addRelation, deleteRelation, removeRelationBetween, updateMember, deleteMember }}>
+    <FamilyContext.Provider value={{ data, addMember, addParents, addRelation, deleteRelation, removeRelationBetween, updateMember, deleteMember, clearTree }}>
       {children}
     </FamilyContext.Provider>
   );
