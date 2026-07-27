@@ -27,14 +27,11 @@ const PhotoField = ({ label, photo, onUpload, onRemove }) => {
       {cropSrc && (
         <div style={{ position: 'relative', minHeight: '220px', borderRadius: '12px', overflow: 'hidden', marginBottom: '8px' }}>
           {/* Inline cropper – reuse ImageCropper */}
-          {React.createElement(
-            require('./ImageCropper').default,
-            {
-              imageSrc: cropSrc,
-              onCropComplete: (img) => { onUpload(img); setCropSrc(null); },
-              onCancel: () => setCropSrc(null),
-            }
-          )}
+          <ImageCropper
+            imageSrc={cropSrc}
+            onCropComplete={(img) => { onUpload(img); setCropSrc(null); }}
+            onCancel={() => setCropSrc(null)}
+          />
         </div>
       )}
       {!cropSrc && (
