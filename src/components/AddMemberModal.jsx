@@ -214,16 +214,7 @@ const AddMemberModal = ({ relatedToId, onClose }) => {
               </div>
 
               <div>
-                <label className="label">Photo (Optional)</label>
-                {photo && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
-                    <img src={photo} alt="Preview" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover' }} />
-                    <button type="button" className="btn" style={{ background: 'var(--danger-color)', padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setPhoto(null)}>
-                      <Trash2 size={14} /> Remove
-                    </button>
-                  </div>
-                )}
-                <PhotoField label="" photo={photo} onUpload={setPhoto} onRemove={() => setPhoto(null)} />
+                <PhotoField label="Photo (Optional)" photo={photo} onUpload={setPhoto} onRemove={() => setPhoto(null)} />
               </div>
             </>
           )}
