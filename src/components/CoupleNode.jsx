@@ -13,12 +13,12 @@ const handleStyle = {
   border: '2px solid #ffffff',
   boxShadow: '0 0 4px rgba(69, 183, 174, 0.3)',
   borderRadius: '50%',
-  zIndex: 10,
+  zIndex: 2,
   cursor: 'crosshair',
 };
 
 const CoupleNode = ({ data }) => {
-  const { husband, wife, onAddRelative, onUpdateMember, onRemoveConnections, onDelete } = data;
+  const { husband, wife, onAddRelative, onAddBulkChildren, onSelectMember, onUpdateMember, onRemoveConnections, onDelete } = data;
 
   return (
     <div style={{ display: 'flex', alignItems: 'stretch', position: 'relative' }}>
@@ -42,6 +42,8 @@ const CoupleNode = ({ data }) => {
       <PersonCard
         member={{ ...husband, generation: husband.generation ?? data.generation }}
         onAddRelative={onAddRelative}
+        onAddBulkChildren={onAddBulkChildren}
+        onSelectMember={onSelectMember}
         onUpdateMember={onUpdateMember}
         onRemoveConnections={onRemoveConnections}
         onDelete={onDelete}
@@ -70,6 +72,8 @@ const CoupleNode = ({ data }) => {
       <PersonCard
         member={{ ...wife, generation: wife.generation ?? data.generation }}
         onAddRelative={onAddRelative}
+        onAddBulkChildren={onAddBulkChildren}
+        onSelectMember={onSelectMember}
         onUpdateMember={onUpdateMember}
         onRemoveConnections={onRemoveConnections}
         onDelete={onDelete}

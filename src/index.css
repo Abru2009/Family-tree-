@@ -144,7 +144,7 @@ body::after {
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(69, 183, 174, 0.2);
   padding: 6px 0;
-  z-index: 100;
+  z-index: 9999;
   min-width: 160px;
   display: flex;
   flex-direction: column;

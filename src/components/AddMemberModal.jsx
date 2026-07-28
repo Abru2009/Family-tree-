@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useFamily } from '../FamilyContext';
 import { X, Trash2, User, Users } from 'lucide-react';
 import ImageCropper from './ImageCropper';
+import SearchableSelect from './SearchableSelect';
 
 /* ─── Helpers ──────────────────────────────────────────────────── */
 const cardStyle = {
@@ -26,7 +27,6 @@ const PhotoField = ({ label, photo, onUpload, onRemove }) => {
       <label className="label">{label}</label>
       {cropSrc && (
         <div style={{ position: 'relative', minHeight: '220px', borderRadius: '12px', overflow: 'hidden', marginBottom: '8px' }}>
-          {/* Inline cropper – reuse ImageCropper */}
           <ImageCropper
             imageSrc={cropSrc}
             onCropComplete={(img) => { onUpload(img); setCropSrc(null); }}
@@ -56,12 +56,20 @@ const PhotoField = ({ label, photo, onUpload, onRemove }) => {
 
 /* ─── Main Modal ────────────────────────────────────────────────── */
 const AddMemberModal = ({ relatedToId, onClose }) => {
-  const { data, addMember, addParents } = useFamily();
+  const { data, addMember, addParents, allHeritages } = useFamily();
   const [name,         setName]         = useState('');
   const [gender,       setGender]       = useState('male');
   const [birthDate,    setBirthDate]    = useState('');
+  const [deathDate,    setDeathDate]    = useState('');
+  const [heritage,     setHeritage]     = useState('');
   const [relationType, setRelationType] = useState('child');
   const [photo,        setPhoto]        = useState(null);
+
+  // Profile extra fields
+  const [phone,      setPhone]      = useState('');
+  const [email,      setEmail]      = useState('');
+  const [occupation, setOccupation] = useState('');
+  const [company,    setCompany]    = useState('');
 
   // Dual-parent state
   const [fatherName,      setFatherName]      = useState('');
@@ -80,16 +88,17 @@ const AddMemberModal = ({ relatedToId, onClose }) => {
     if (isParentMode) {
       if (!fatherName.trim() && !motherName.trim()) return;
       addParents(
-        { name: fatherName || 'Father', birthDate: fatherBirthDate, photo: fatherPhoto },
-        { name: motherName || 'Mother', birthDate: motherBirthDate, photo: motherPhoto },
+        { name: fatherName || 'Father', birthDate: fatherBirthDate, photo: fatherPhoto, heritage },
+        { name: motherName || 'Mother', birthDate: motherBirthDate, photo: motherPhoto, heritage },
         relatedToId
       );
     } else {
       if (!name.trim()) return;
+      const memberObj = { name, gender, birthDate, deathDate, heritage, phone, email, occupation, company, photo };
       if (isRoot) {
-        addMember({ name, gender, birthDate, photo });
+        addMember(memberObj);
       } else {
-        addMember({ name, gender, birthDate, photo }, relationType, relatedToId);
+        addMember(memberObj, relationType, relatedToId);
       }
     }
     onClose();
@@ -100,13 +109,13 @@ const AddMemberModal = ({ relatedToId, onClose }) => {
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: 'rgba(200,240,236,0.45)',
-      backdropFilter: 'blur(6px)',
+      background: 'rgba(10, 18, 35, 0.75)',
+      backdropFilter: 'blur(8px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 1000,
     }}>
       <div className="glass" style={{
-        width: '100%', maxWidth: isParentMode ? '560px' : '420px',
+        width: '100%', maxWidth: isParentMode ? '560px' : '460px',
         padding: '28px', position: 'relative',
         maxHeight: '90vh', overflowY: 'auto',
       }}>
@@ -119,7 +128,7 @@ const AddMemberModal = ({ relatedToId, onClose }) => {
           {isRoot ? '🌱 Start Your Family Tree' : `Add relative for ${relatedPerson?.name}`}
         </h2>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
           {/* Relation selector (not shown for root) */}
           {!isRoot && (
@@ -151,9 +160,8 @@ const AddMemberModal = ({ relatedToId, onClose }) => {
           {/* ── DUAL PARENT FORM ─────────────────────────────────── */}
           {isParentMode ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              {/* Father */}
               <div style={cardStyle}>
-                <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-color)', marginBottom: '12px' }}>👤 Parent</p>
+                <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-color)', marginBottom: '12px' }}>👤 Father</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
                     <label className="label">Name</label>
@@ -170,9 +178,8 @@ const AddMemberModal = ({ relatedToId, onClose }) => {
                 </div>
               </div>
 
-              {/* Mother */}
               <div style={cardStyle}>
-                <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-color)', marginBottom: '12px' }}>👤 Parent</p>
+                <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-color)', marginBottom: '12px' }}>👤 Mother</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
                     <label className="label">Name</label>
@@ -198,18 +205,50 @@ const AddMemberModal = ({ relatedToId, onClose }) => {
                   value={name} onChange={e => setName(e.target.value)} required />
               </div>
 
-              <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
-                  <label className="label">Gender</label>
-                  <select className="input" value={gender} onChange={e => setGender(e.target.value)} style={{ appearance: 'none' }}>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
+                  <SearchableSelect
+                    label="Gender"
+                    options={[{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }]}
+                    value={gender}
+                    onChange={setGender}
+                  />
                 </div>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Family Heritage (Surname/Clan)</label>
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder="e.g. Abraham, McGregor"
+                    value={heritage}
+                    onChange={e => setHeritage(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
                   <label className="label">Date of Birth</label>
                   <input className="input" type="date" max={today}
                     value={birthDate} onChange={e => setBirthDate(e.target.value)} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Date of Death (Optional)</label>
+                  <input className="input" type="date" max={today}
+                    value={deathDate} onChange={e => setDeathDate(e.target.value)} />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Occupation</label>
+                  <input className="input" type="text" placeholder="e.g. Engineer"
+                    value={occupation} onChange={e => setOccupation(e.target.value)} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Company / Org</label>
+                  <input className="input" type="text" placeholder="e.g. Acme Inc"
+                    value={company} onChange={e => setCompany(e.target.value)} />
                 </div>
               </div>
 
@@ -219,7 +258,7 @@ const AddMemberModal = ({ relatedToId, onClose }) => {
             </>
           )}
 
-          <button type="submit" className="btn" style={{ marginTop: '4px', padding: '12px' }}>
+          <button type="submit" className="btn" style={{ marginTop: '8px', padding: '12px' }}>
             {isRoot ? '🌱 Start Family Tree'
               : isParentMode ? 'Add Parents'
               : `Add ${relationType.charAt(0).toUpperCase() + relationType.slice(1)}`}
