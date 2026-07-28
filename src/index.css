@@ -110,14 +110,12 @@ body::after {
 
 /* Controls */
 .react-flow__controls {
-  background: rgba(255, 255, 255, 0.88) !important;
-  backdrop-filter: blur(12px) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(16px) !important;
   border: 1px solid var(--glass-border) !important;
-  border-radius: 10px !important;
+  border-radius: 12px !important;
   box-shadow: var(--glass-shadow) !important;
   overflow: hidden;
-  display: flex !important;
-  flex-direction: column !important;
 }
 .react-flow__controls-button {
   background: transparent !important;
@@ -126,19 +124,9 @@ body::after {
   border-right: none !important;
   border-top: none !important;
   color: var(--text-primary) !important;
-  fill: var(--text-primary) !important;
-  width: 26px !important;
-  height: 26px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
 }
 .react-flow__controls-button:hover {
   background: rgba(69, 183, 174, 0.12) !important;
-}
-.react-flow__controls-button svg {
-  fill: none !important;
-  stroke: var(--text-primary) !important;
 }
 
 /* Dropdown */
