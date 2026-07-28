@@ -67,6 +67,25 @@ export const PersonCard = ({
         ...style,
       }}
     >
+      {/* Generation Badge */}
+      {member.generation !== undefined && (
+        <div style={{
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          background: isMale ? 'rgba(69, 183, 174, 0.12)' : 'rgba(224, 137, 154, 0.12)',
+          border: `1px solid ${isMale ? 'rgba(69, 183, 174, 0.35)' : 'rgba(224, 137, 154, 0.35)'}`,
+          color: isMale ? 'var(--accent-color)' : 'var(--female-color)',
+          borderRadius: '10px',
+          padding: '1px 7px',
+          fontSize: '0.65rem',
+          fontWeight: 700,
+          pointerEvents: 'none',
+          letterSpacing: '0.5px',
+        }}>
+          Gen {member.generation}
+        </div>
+      )}
       {/* 3-dot menu */}
       <div
         ref={menuRef}
@@ -160,7 +179,7 @@ const PersonNode = ({ data }) => {
       <Handle type="source"  position={Position.Right}  id="right"  style={{ ...hiddenHandle, right: -4 }} />
 
       <PersonCard
-        member={{ id: data.id, name: data.name, gender: data.gender, birthDate: data.birthDate, photo: data.photo }}
+        member={{ id: data.id, name: data.name, gender: data.gender, birthDate: data.birthDate, photo: data.photo, generation: data.generation }}
         onAddRelative={data.onAddRelative}
         onAddBulkChildren={data.onAddBulkChildren}
         onSelectMember={data.onSelectMember}

@@ -503,62 +503,48 @@ const FamilyGraph = ({
           <FamilyConnections relations={data.relations} members={data.members} heritageColors={heritageColors} />
           <Background color="#45b7ae" gap={28} size={1} variant="dots" style={{ opacity: 0.12 }} />
 
-          {/* Bottom Left Toolbar with Undo / Redo & Drag Mode */}
+          {/* Bottom Left Controls: Zoom, Lock, Drag-select, Undo, Redo */}
           <Controls
             position="bottom-left"
-            style={{ margin: 16, display: 'flex', gap: 6 }}
+            style={{ margin: 16 }}
             showInteractive={true}
             onInteractiveChange={(interactive) => setIsLocked(!interactive)}
           >
             {/* Group Drag Selection Mode Toggle Button */}
             <button
+              type="button"
+              className="react-flow__controls-button"
               onClick={() => setIsDragSelectMode(!isDragSelectMode)}
               style={{
-                width: 28, height: 28, borderRadius: 4,
-                background: isDragSelectMode ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.88)',
-                border: '1px solid var(--glass-border)',
-                color: isDragSelectMode ? 'white' : 'var(--text-primary)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: isDragSelectMode ? 'rgba(69, 183, 174, 0.25)' : 'transparent',
               }}
               title={isDragSelectMode ? "Drag Mode Active: Drag rectangle to group select" : "Click to enable Box Drag Selection"}
             >
-              <Square size={14} />
+              <Square size={13} color={isDragSelectMode ? 'var(--accent-color)' : 'var(--text-primary)'} />
             </button>
 
             {/* Undo Button */}
             <button
+              type="button"
+              className="react-flow__controls-button"
               onClick={undo}
               disabled={!canUndo}
-              style={{
-                width: 28, height: 28, borderRadius: 4,
-                background: 'rgba(255, 255, 255, 0.88)',
-                border: '1px solid var(--glass-border)',
-                color: canUndo ? 'var(--text-primary)' : 'var(--text-secondary)',
-                opacity: canUndo ? 1 : 0.4,
-                cursor: canUndo ? 'pointer' : 'not-allowed',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
+              style={{ opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'not-allowed' }}
               title="Undo last action"
             >
-              <Undo size={14} />
+              <Undo size={13} />
             </button>
 
             {/* Redo Button */}
             <button
+              type="button"
+              className="react-flow__controls-button"
               onClick={redo}
               disabled={!canRedo}
-              style={{
-                width: 28, height: 28, borderRadius: 4,
-                background: 'rgba(255, 255, 255, 0.88)',
-                border: '1px solid var(--glass-border)',
-                color: canRedo ? 'var(--text-primary)' : 'var(--text-secondary)',
-                opacity: canRedo ? 1 : 0.4,
-                cursor: canRedo ? 'pointer' : 'not-allowed',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
+              style={{ opacity: canRedo ? 1 : 0.35, cursor: canRedo ? 'pointer' : 'not-allowed' }}
               title="Redo action"
             >
-              <Redo size={14} />
+              <Redo size={13} />
             </button>
           </Controls>
 
