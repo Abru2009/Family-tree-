@@ -110,23 +110,37 @@ body::after {
 
 /* Controls */
 .react-flow__controls {
-  background: var(--glass-bg) !important;
+  background: rgba(255, 255, 255, 0.80) !important;
   backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
   border: 1px solid var(--glass-border) !important;
-  border-radius: 12px !important;
+  border-radius: 14px !important;
   box-shadow: var(--glass-shadow) !important;
   overflow: hidden;
+  display: flex !important;
+  flex-direction: column !important;
 }
 .react-flow__controls-button {
   background: transparent !important;
-  border-bottom: 1px solid rgba(69, 183, 174, 0.15) !important;
+  border-bottom: 1px solid rgba(69, 183, 174, 0.2) !important;
   border-left: none !important;
   border-right: none !important;
   border-top: none !important;
-  color: var(--text-primary) !important;
+  color: var(--accent-color) !important;
+  fill: var(--accent-color) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 .react-flow__controls-button:hover {
   background: rgba(69, 183, 174, 0.12) !important;
+}
+.react-flow__controls-button svg {
+  fill: var(--accent-color) !important;
+  color: var(--accent-color) !important;
+}
+.react-flow__controls-button path {
+  fill: var(--accent-color) !important;
 }
 
 /* Dropdown */

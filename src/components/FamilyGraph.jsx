@@ -520,7 +520,7 @@ const FamilyGraph = ({
               }}
               title={isDragSelectMode ? "Drag Mode Active: Drag rectangle to group select" : "Click to enable Box Drag Selection"}
             >
-              <Square size={13} color={isDragSelectMode ? 'var(--accent-color)' : 'var(--text-primary)'} />
+              <Square size={13} color="var(--accent-color)" />
             </button>
 
             {/* Undo Button */}
@@ -532,7 +532,7 @@ const FamilyGraph = ({
               style={{ opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'not-allowed' }}
               title="Undo last action"
             >
-              <Undo size={13} />
+              <Undo size={13} color="var(--accent-color)" />
             </button>
 
             {/* Redo Button */}
@@ -544,7 +544,7 @@ const FamilyGraph = ({
               style={{ opacity: canRedo ? 1 : 0.35, cursor: canRedo ? 'pointer' : 'not-allowed' }}
               title="Redo action"
             >
-              <Redo size={13} />
+              <Redo size={13} color="var(--accent-color)" />
             </button>
           </Controls>
 
