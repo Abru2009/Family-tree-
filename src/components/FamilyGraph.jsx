@@ -515,8 +515,8 @@ const FamilyGraph = ({
               onClick={() => setIsDragSelectMode(!isDragSelectMode)}
               style={{
                 width: 28, height: 28, borderRadius: 4,
-                background: isDragSelectMode ? 'var(--accent-color)' : 'rgba(15, 23, 42, 0.8)',
-                border: '1px solid rgba(69, 183, 174, 0.3)',
+                background: isDragSelectMode ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.88)',
+                border: '1px solid var(--glass-border)',
                 color: isDragSelectMode ? 'white' : 'var(--text-primary)',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
@@ -531,9 +531,10 @@ const FamilyGraph = ({
               disabled={!canUndo}
               style={{
                 width: 28, height: 28, borderRadius: 4,
-                background: 'rgba(15, 23, 42, 0.8)',
-                border: '1px solid rgba(69, 183, 174, 0.3)',
-                color: canUndo ? 'var(--text-primary)' : 'rgba(255,255,255,0.2)',
+                background: 'rgba(255, 255, 255, 0.88)',
+                border: '1px solid var(--glass-border)',
+                color: canUndo ? 'var(--text-primary)' : 'var(--text-secondary)',
+                opacity: canUndo ? 1 : 0.4,
                 cursor: canUndo ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
@@ -548,9 +549,10 @@ const FamilyGraph = ({
               disabled={!canRedo}
               style={{
                 width: 28, height: 28, borderRadius: 4,
-                background: 'rgba(15, 23, 42, 0.8)',
-                border: '1px solid rgba(69, 183, 174, 0.3)',
-                color: canRedo ? 'var(--text-primary)' : 'rgba(255,255,255,0.2)',
+                background: 'rgba(255, 255, 255, 0.88)',
+                border: '1px solid var(--glass-border)',
+                color: canRedo ? 'var(--text-primary)' : 'var(--text-secondary)',
+                opacity: canRedo ? 1 : 0.4,
                 cursor: canRedo ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
