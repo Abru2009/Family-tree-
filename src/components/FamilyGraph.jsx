@@ -103,25 +103,26 @@ const buildNodes = (members, relations, handlers, hiddenHeritages, nodePositions
 };
 
 const MIN_GAP = 70;
+const ROW_H   = NODE_H + 180; // 320px per generation row
 
-// ─── Layout Algorithm ──────────────────────────────────────────────────
+// ─── Layout Algorithm: Bilateral Family Tree ──────────────────────────────
+// Separates families into distinct column clusters so lines never cross.
+// Family columns are determined by tracing root ancestors (nodes with no parents).
+// Each root family gets its own X-axis lane; children/couples are placed between
+// their two parent families' lanes.
 const layoutNodes = (rfNodes, childEdges, nodePositions) => {
   if (!rfNodes || rfNodes.length === 0) return [];
 
-  const nodePosMap = {};
-  const genOf      = {};
-  rfNodes.forEach((n, i) => {
-    nodePosMap[n.id] = nodePositions[n.id] ? { ...nodePositions[n.id] } : { x: i * (PERSON_NODE_W + MIN_GAP), y: 0 };
-    genOf[n.id]      = 0;
-  });
-
-  // If positions are saved in localStorage, respect saved positions
   const hasSavedPositions = rfNodes.some(n => !!nodePositions[n.id]);
+
+  // ── Always compute genOf (depth) via BFS ──────────────────────────────────
+  const genOf = {};
+  rfNodes.forEach(n => { genOf[n.id] = 0; });
 
   try {
     const childTargets = new Set(childEdges.map(e => e.target));
-    const roots        = rfNodes.map(n => n.id).filter(id => !childTargets.has(id));
-    const q     = (roots.length > 0 ? roots : [rfNodes[0].id]).map(id => { genOf[id] = 0; return id; });
+    const roots = rfNodes.map(n => n.id).filter(id => !childTargets.has(id));
+    const q = (roots.length > 0 ? roots : [rfNodes[0].id]).map(id => { genOf[id] = 0; return id; });
 
     let safety = 0;
     while (q.length > 0 && safety < 2000) {
@@ -132,135 +133,161 @@ const layoutNodes = (rfNodes, childEdges, nodePositions) => {
         if (genOf[e.target] !== next) { genOf[e.target] = next; q.push(e.target); }
       });
     }
+  } catch (err) {
+    console.error('Layout BFS error:', err);
+  }
 
-    rfNodes.forEach(n => {
-      if (genOf[n.id] === undefined) genOf[n.id] = 0;
+  rfNodes.forEach(n => { if (genOf[n.id] === undefined) genOf[n.id] = 0; });
+
+  // ── If saved positions exist, just snap Y and derive generation ──────────
+  if (hasSavedPositions) {
+    return rfNodes.map(n => {
+      const saved = nodePositions[n.id];
+      const x = saved?.x ?? 0;
+      const y = saved ? Math.round(saved.y / ROW_H) * ROW_H : (genOf[n.id] ?? 0) * ROW_H;
+      return {
+        ...n,
+        position: { x, y },
+        data: { ...n.data, generation: Math.round(y / ROW_H) + 1 },
+      };
+    });
+  }
+
+  // ── Fresh layout: Bilateral column algorithm ──────────────────────────────
+  try {
+    const childTargets = new Set(childEdges.map(e => e.target));
+    const roots = rfNodes.filter(n => !childTargets.has(n.id));
+
+    // Build parent→children map
+    const childrenOf = {};
+    const parentOf   = {};
+    childEdges.forEach(e => {
+      (childrenOf[e.source] = childrenOf[e.source] || []).push(e.target);
+      parentOf[e.target] = e.source;
     });
 
-    if (!hasSavedPositions) {
-      const parentOf = {};
-      childEdges.forEach(e => { parentOf[e.target] = e.source; });
+    // Assign each root a separate "family column" index
+    const familyOf = {}; // nodeId → familyIndex
+    roots.forEach((root, fi) => {
+      const stack = [root.id];
+      while (stack.length) {
+        const id = stack.pop();
+        if (familyOf[id] !== undefined) continue;
+        familyOf[id] = fi;
+        (childrenOf[id] || []).forEach(cid => stack.push(cid));
+      }
+    });
 
-      const getBirthDate = (n) => {
-        if (n.type === 'couple') return n.data.husband?.birthDate || n.data.wife?.birthDate || '';
-        return n.data.birthDate || '';
-      };
+    // Nodes with two family origins (e.g., children of cross-family couples)
+    // get placed at the boundary between the two families
+    const familyCount = roots.length || 1;
+    const FAMILY_COL_W = 900; // pixels wide per root-family column
 
-      const nodesByGen = {};
-      rfNodes.forEach(n => {
-        const g = genOf[n.id] ?? 0;
-        (nodesByGen[g] = nodesByGen[g] || []).push(n);
+    // Group nodes by generation
+    const nodesByGen = {};
+    rfNodes.forEach(n => {
+      const g = genOf[n.id] ?? 0;
+      (nodesByGen[g] = nodesByGen[g] || []).push(n);
+    });
+
+    const genKeys = Object.keys(nodesByGen).map(Number);
+    const maxGen  = genKeys.length ? Math.max(...genKeys) : 0;
+
+    const nodePosMap = {};
+
+    // Place each generation row left-to-right, grouped by family
+    for (let g = 0; g <= maxGen; g++) {
+      const genNodes = nodesByGen[g] || [];
+      if (!genNodes.length) continue;
+
+      // Sort by family index, then by x within family
+      genNodes.sort((a, b) => {
+        const fa = familyOf[a.id] ?? 0;
+        const fb = familyOf[b.id] ?? 0;
+        if (fa !== fb) return fa - fb;
+        return 0;
       });
 
-      const genKeys = Object.keys(nodesByGen).map(Number);
-      const maxGen  = genKeys.length ? Math.max(...genKeys) : 0;
+      // Layout within each family column
+      const familyXCursor = {};
+      genNodes.forEach(n => {
+        const fi = familyOf[n.id] ?? 0;
+        const colStart = fi * FAMILY_COL_W;
+        if (familyXCursor[fi] === undefined) familyXCursor[fi] = colStart;
 
-      for (let g = 0; g <= maxGen; g++) {
-        const genNodes = nodesByGen[g] || [];
-        if (!genNodes.length) continue;
+        const w = n.type === 'couple' ? COUPLE_NODE_W : PERSON_NODE_W;
+        nodePosMap[n.id] = { x: familyXCursor[fi], y: g * ROW_H };
+        familyXCursor[fi] += w + MIN_GAP;
+      });
+    }
 
-        genNodes.sort((a, b) => {
-          const pA = parentOf[a.id] || '';
-          const pB = parentOf[b.id] || '';
-          if (pA !== pB) return pA.localeCompare(pB);
-          const bA = getBirthDate(a);
-          const bB = getBirthDate(b);
-          if (!bA && !bB) return 0;
-          if (!bA) return 1;
-          if (!bB) return -1;
-          return bA < bB ? -1 : 1;
-        });
+    // Pass 2: center parents over their children
+    for (let g = maxGen - 1; g >= 0; g--) {
+      const genNodes = nodesByGen[g] || [];
+      genNodes.forEach(pn => {
+        const kids = (childrenOf[pn.id] || []).map(cid => rfNodes.find(n => n.id === cid)).filter(Boolean);
+        if (kids.length > 0) {
+          const childXs = kids.map(c => {
+            const cw  = c.type === 'couple' ? COUPLE_NODE_W : PERSON_NODE_W;
+            const pos = nodePosMap[c.id] || { x: 0 };
+            return { left: pos.x, right: pos.x + cw };
+          });
+          const minCX = Math.min(...childXs.map(c => c.left));
+          const maxCX = Math.max(...childXs.map(c => c.right));
+          const centerX = (minCX + maxCX) / 2;
+          const pw = pn.type === 'couple' ? COUPLE_NODE_W : PERSON_NODE_W;
+          if (nodePosMap[pn.id]) nodePosMap[pn.id].x = centerX - pw / 2;
+        }
+      });
 
-        let currentX = 0;
-        const yPos   = g * (NODE_H + 180);
-
-        genNodes.forEach(n => {
-          const w = n.type === 'couple' ? COUPLE_NODE_W : PERSON_NODE_W;
-          nodePosMap[n.id] = { x: currentX, y: yPos };
-          currentX += w + MIN_GAP;
-        });
-      }
-
-      for (let g = maxGen - 1; g >= 0; g--) {
-        const genNodes = nodesByGen[g] || [];
-        genNodes.forEach(pn => {
-          const children = rfNodes.filter(n => parentOf[n.id] === pn.id);
-          if (children.length > 0) {
-            const childXs = children.map(c => {
-              const cw = c.type === 'couple' ? COUPLE_NODE_W : PERSON_NODE_W;
-              const pos = nodePosMap[c.id] || { x: 0 };
-              return { left: pos.x, right: pos.x + cw };
-            });
-            const minChildX     = Math.min(...childXs.map(c => c.left));
-            const maxChildRight = Math.max(...childXs.map(c => c.right));
-            const childrenCenterX = (minChildX + maxChildRight) / 2;
-
-            const pw = pn.type === 'couple' ? COUPLE_NODE_W : PERSON_NODE_W;
-            if (nodePosMap[pn.id]) {
-              nodePosMap[pn.id].x = childrenCenterX - pw / 2;
-            }
-          }
-        });
-
-        genNodes.sort((a, b) => (nodePosMap[a.id]?.x || 0) - (nodePosMap[b.id]?.x || 0));
-        for (let i = 1; i < genNodes.length; i++) {
-          const prev  = genNodes[i - 1];
-          const cur   = genNodes[i];
-          const prevW = prev.type === 'couple' ? COUPLE_NODE_W : PERSON_NODE_W;
-          const prevX = nodePosMap[prev.id]?.x || 0;
-          const curX  = nodePosMap[cur.id]?.x || 0;
-          const minX  = prevX + prevW + MIN_GAP;
-          if (curX < minX && nodePosMap[cur.id]) {
-            nodePosMap[cur.id].x = minX;
-          }
+      // Prevent overlaps within the same generation
+      const genNodes2 = [...genNodes].sort((a, b) => (nodePosMap[a.id]?.x || 0) - (nodePosMap[b.id]?.x || 0));
+      for (let i = 1; i < genNodes2.length; i++) {
+        const prev = genNodes2[i - 1];
+        const cur  = genNodes2[i];
+        const prevW = prev.type === 'couple' ? COUPLE_NODE_W : PERSON_NODE_W;
+        const minX  = (nodePosMap[prev.id]?.x || 0) + prevW + MIN_GAP;
+        if ((nodePosMap[cur.id]?.x || 0) < minX && nodePosMap[cur.id]) {
+          nodePosMap[cur.id].x = minX;
         }
       }
     }
+
+    // Centre entire tree horizontally
+    const allX = rfNodes.map(n => nodePosMap[n.id]?.x || 0);
+    const minX = Math.min(...allX);
+    const maxX = Math.max(...rfNodes.map(n => (nodePosMap[n.id]?.x || 0) + (n.type === 'couple' ? COUPLE_NODE_W : PERSON_NODE_W)));
+    const offsetX = -((minX + maxX) / 2);
+
+    return rfNodes.map(n => {
+      const x = (nodePosMap[n.id]?.x || 0) + offsetX;
+      const y = nodePosMap[n.id]?.y || 0;
+      return {
+        ...n,
+        position: { x, y },
+        data: { ...n.data, generation: Math.round(y / ROW_H) + 1 },
+      };
+    });
+
   } catch (err) {
     console.error('Layout error:', err);
-  }
-
-  const laid = rfNodes.map(n => {
-    let y = nodePosMap[n.id]?.y || 0;
-    let x = nodePosMap[n.id]?.x || 0;
-
-    // Calculate generation based purely on Y position (ROW_SPACING = NODE_H + 180 = 320)
-    // Snapping y to the nearest 320 just in case
-    y = Math.round(y / 320) * 320;
-    const gen = Math.round(y / 320) + 1;
-
-    return {
+    return rfNodes.map((n, i) => ({
       ...n,
-      position: { x, y },
-      data: {
-        ...n.data,
-        generation: gen,
-      },
-    };
-  });
-
-  if (!hasSavedPositions) {
-    const allX = laid.map(n => n.position.x);
-    const minX = Math.min(...allX);
-    const maxX = Math.max(...allX.map((x, i) => {
-      const n = laid[i];
-      return x + (n.type === 'couple' ? COUPLE_NODE_W : PERSON_NODE_W);
+      position: { x: i * (PERSON_NODE_W + MIN_GAP), y: 0 },
+      data: { ...n.data, generation: 1 },
     }));
-    const offsetX = -((minX + maxX) / 2);
-    laid.forEach(n => { n.position.x += offsetX; });
   }
-
-  return laid;
 };
 
-// ─── T-Bar SVG Overlay with Heritage Color Coding ──────────────────────────
+// ─── T-Bar SVG Overlay – Heritage-colored, family-separated lines ──────────
 const FamilyConnections = ({ relations, members, heritageColors }) => {
   const nodes = useNodes();
   const { x: vpX, y: vpY, zoom } = useViewport();
 
-  const lines = useMemo(() => {
+  const { lines, SW, labels } = useMemo(() => {
     const childRels = relations.filter(r => r.type !== 'spouse');
 
+    // Build memberNodeOf lookup
     const memberNodeOf = {};
     nodes.forEach(n => {
       if (n.type === 'couple') {
@@ -271,6 +298,7 @@ const FamilyConnections = ({ relations, members, heritageColors }) => {
       }
     });
 
+    // Group child-rels by parent node id
     const familyUnits = {};
     childRels.forEach(rel => {
       const parentNode = memberNodeOf[rel.source];
@@ -281,9 +309,10 @@ const FamilyConnections = ({ relations, members, heritageColors }) => {
     });
 
     const toScreen = (fx, fy) => ({ x: fx * zoom + vpX, y: fy * zoom + vpY });
-    const SW     = Math.max(2, 2.5 * zoom);
+    const SW = Math.max(2, 2.5 * zoom);
 
     const result = [];
+    const labelItems = [];
 
     Object.entries(familyUnits).forEach(([parentNodeId, rels]) => {
       const parentNode = nodes.find(n => n.id === parentNodeId);
@@ -292,7 +321,7 @@ const FamilyConnections = ({ relations, members, heritageColors }) => {
       const pCx = getParentBottomCenterX(parentNode);
       const pBy = parentNode.position.y + NODE_H;
 
-      // Determine heritage color for this family unit
+      // Heritage color
       let parentHeritage = null;
       if (parentNode.type === 'couple') {
         parentHeritage = parentNode.data.husband?.heritage || parentNode.data.wife?.heritage;
@@ -302,43 +331,54 @@ const FamilyConnections = ({ relations, members, heritageColors }) => {
       const lineColor = (parentHeritage && heritageColors?.[parentHeritage]) || '#45b7ae';
 
       const childTops = rels.map(rel => {
-        const childMemberId = rel.target;
-        const childNode     = memberNodeOf[childMemberId];
+        const childNode = memberNodeOf[rel.target];
         if (!childNode) return null;
-        const cx = getMemberTopCenterX(childMemberId, childNode);
+        const cx = getMemberTopCenterX(rel.target, childNode);
         return { cx, ty: childNode.position.y };
       }).filter(Boolean);
 
       if (!childTops.length) return;
 
       const childTopY = Math.min(...childTops.map(c => c.ty));
-      const jY        = (pBy + childTopY) / 2;
+
+      // Place the horizontal junction bar at 40% of the gap (closer to parent)
+      // so lines from different families at the same generation diverge clearly
+      const jY = pBy + (childTopY - pBy) * 0.45;
 
       const allXPoints = [...childTops.map(c => c.cx), pCx];
       const minX = Math.min(...allXPoints);
       const maxX = Math.max(...allXPoints);
 
+      // Vertical stem from parent bottom → junction
       const pB = toScreen(pCx, pBy + 4);
       const jC = toScreen(pCx, jY);
-      result.push({ x1: pB.x, y1: pB.y, x2: jC.x, y2: jC.y, stroke: lineColor });
+      result.push({ x1: pB.x, y1: pB.y, x2: jC.x, y2: jC.y, stroke: lineColor, width: SW });
 
+      // Horizontal bar across children
       if (minX < maxX) {
         const L = toScreen(minX, jY);
         const R = toScreen(maxX, jY);
-        result.push({ x1: L.x, y1: L.y, x2: R.x, y2: R.y, stroke: lineColor });
+        result.push({ x1: L.x, y1: L.y, x2: R.x, y2: R.y, stroke: lineColor, width: SW });
       }
 
+      // Vertical drops to each child
       childTops.forEach(({ cx, ty }) => {
         const Jpt = toScreen(cx, jY);
         const Tpt = toScreen(cx, ty - 4);
-        result.push({ x1: Jpt.x, y1: Jpt.y, x2: Tpt.x, y2: Tpt.y, stroke: lineColor });
+        result.push({ x1: Jpt.x, y1: Jpt.y, x2: Tpt.x, y2: Tpt.y, stroke: lineColor, width: SW });
       });
+
+      // Add a small heritage label at the junction point if heritage exists
+      if (parentHeritage) {
+        const lp = toScreen(pCx + 6, pBy + 12);
+        labelItems.push({ x: lp.x, y: lp.y, text: parentHeritage, color: lineColor });
+      }
     });
 
-    return { lines: result, SW };
+    return { lines: result, SW, labels: labelItems };
   }, [nodes, relations, zoom, vpX, vpY, heritageColors]);
 
-  if (!lines.lines.length) return null;
+  if (!lines.length) return null;
 
   return (
     <svg style={{
@@ -348,18 +388,41 @@ const FamilyConnections = ({ relations, members, heritageColors }) => {
       pointerEvents: 'none',
       zIndex: 5,
     }}>
-      {lines.lines.map((l, i) => (
+      <defs>
+        {/* Soft glow filter per line */}
+        <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+
+      {lines.map((l, i) => (
         <line
           key={i}
-          x1={l.x1}
-          y1={l.y1}
-          x2={l.x2}
-          y2={l.y2}
+          x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
           stroke={l.stroke}
-          strokeWidth={lines.SW}
+          strokeWidth={l.width}
           strokeLinecap="round"
           strokeLinejoin="round"
+          filter="url(#lineGlow)"
+          strokeOpacity="0.9"
         />
+      ))}
+
+      {/* Heritage name labels on stems */}
+      {labels.map((lb, i) => (
+        <text
+          key={`lbl-${i}`}
+          x={lb.x} y={lb.y}
+          fill={lb.color}
+          fontSize={Math.max(9, 11 * zoom)}
+          fontWeight="700"
+          fontFamily="system-ui, sans-serif"
+          opacity="0.65"
+          style={{ userSelect: 'none' }}
+        >
+          {lb.text}
+        </text>
       ))}
     </svg>
   );

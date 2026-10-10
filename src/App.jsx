@@ -119,6 +119,7 @@ const AppContent = () => {
           data={data}
           heritageColors={heritageColors}
           onClose={() => setSelectedMemberId(null)}
+          onSelectMember={handleSelectMember}
           onEdit={() => {
             setUpdateModalOpenFor(selectedMember.id);
             setSelectedMemberId(null);
