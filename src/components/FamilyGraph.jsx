@@ -221,13 +221,17 @@ const layoutNodes = (rfNodes, childEdges, nodePositions) => {
   }
 
   const laid = rfNodes.map(n => {
-    const gen = (genOf[n.id] ?? 0) + 1;
+    let y = nodePosMap[n.id]?.y || 0;
+    let x = nodePosMap[n.id]?.x || 0;
+
+    // Calculate generation based purely on Y position (ROW_SPACING = NODE_H + 180 = 320)
+    // Snapping y to the nearest 320 just in case
+    y = Math.round(y / 320) * 320;
+    const gen = Math.round(y / 320) + 1;
+
     return {
       ...n,
-      position: {
-        x: nodePosMap[n.id]?.x || 0,
-        y: nodePosMap[n.id]?.y || 0,
-      },
+      position: { x, y },
       data: {
         ...n.data,
         generation: gen,
@@ -434,6 +438,10 @@ const FamilyGraph = ({
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
+  React.useEffect(() => {
+    setNodes(layoutedNodes);
+  }, [layoutedNodes, setNodes]);
+
   const onConnect = React.useCallback((connection) => {
     const { source, target, sourceHandle, targetHandle } = connection;
     const getMemberId = (nodeId, handleId) => {
@@ -498,6 +506,8 @@ const FamilyGraph = ({
           fitView
           fitViewOptions={{ padding: 0.25 }}
           minZoom={0.08}
+          snapToGrid={true}
+          snapGrid={[1, 320]}
           proOptions={{ hideAttribution: true }}
         >
           <FamilyConnections relations={data.relations} members={data.members} heritageColors={heritageColors} />
