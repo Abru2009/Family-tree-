@@ -92,6 +92,23 @@ export const loginUserAccount = async ({ email, password }) => {
   return session;
 };
 
+// ── Account Recovery: reset password for an existing account ─────────────────
+export const resetAccountPassword = async ({ userId, newPassword }) => {
+  const users = getStoredUsers();
+  const idx = users.findIndex(u => u.id === userId);
+  if (idx === -1) throw new Error('Account not found.');
+
+  const user = users[idx];
+  const newHash = await hashPassword(newPassword, user.email);
+  users[idx] = { ...user, passwordHash: newHash };
+  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+
+  // Auto-login after reset
+  const session = { id: user.id, name: user.name, email: user.email };
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(session));
+  return session;
+};
+
 // Logout active user session
 export const logoutUserAccount = () => {
   localStorage.removeItem(CURRENT_USER_KEY);

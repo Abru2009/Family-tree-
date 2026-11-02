@@ -39,6 +39,11 @@ export const AuthProvider = ({ children }) => {
     setIsAuthModalOpen(true);
   };
 
+  const signInWithSession = (session) => {
+    setCurrentUser(session);
+    setIsAuthModalOpen(false);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -49,6 +54,7 @@ export const AuthProvider = ({ children }) => {
         signUp,
         signIn,
         signOut,
+        signInWithSession,
       }}
     >
       {children}
